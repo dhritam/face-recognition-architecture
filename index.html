@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>System Atlas — Face Recognition Server</title>
+  <style>
+    :root {
+      --bg: #eef1f5;
+      --surface: #ffffff;
+      --raised: #f5f7fa;
+      --line: #d6dce4;
+      --line-strong: #b8c1cf;
+      --text: #141a23;
+      --muted: #5b6576;
+      --faint: #7e899a;
+      --signal: #2f5bea;
+      --signal-soft: #e8edff;
+      --known: #15803d;
+      --known-soft: #e7f5eb;
+      --unknown: #c62828;
+      --unknown-soft: #fbeaea;
+      --warn: #b45309;
+      --warn-soft: #fff2df;
+      --violet: #7557c7;
+      --violet-soft: #f0ebff;
+      --cyan: #087f8c;
+      --cyan-soft: #e2f5f6;
+      --shadow: 0 12px 34px rgba(20, 26, 35, .08), 0 1px 2px rgba(20, 26, 35, .05);
+      --font: "Instrument Sans", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --radius: 12px;
+      --max: 1500px;
+    }
+
+    html[data-theme="dark"] {
+      --bg: #11151b;
+      --surface: #1a2029;
+      --raised: #222a35;
+      --line: #303947;
+      --line-strong: #455064;
+      --text: #eef2f7;
+      --muted: #a4afbf;
+      --faint: #8793a5;
+      --signal: #7697ff;
+      --signal-soft: #202d56;
+      --known: #4bd489;
+      --known-soft: #183c2a;
+      --unknown: #ff777d;
+      --unknown-soft: #49272b;
+      --warn: #ffc069;
+      --warn-soft: #49351d;
+      --violet: #b59af9;
+      --violet-soft: #31294d;
+      --cyan: #68d1db;
+      --cyan-soft: #19383c;
+      --shadow: 0 18px 44px rgba(0, 0, 0, .28), 0 1px 2px rgba(0, 0, 0, .35);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    button { font: inherit; }
+    a { color: inherit; }
+    :focus-visible { outline: 3px solid color-mix(in srgb, var(--signal), transparent 45%); outline-offset: 3px; }
+
+    body, .scrollbox {
+      scrollbar-color: var(--line-strong) var(--raised);
+      scrollbar-width: thin;
+    }
+    body::-webkit-scrollbar, .scrollbox::-webkit-scrollbar { width: 10px; height: 10px; }
+    body::-webkit-scrollbar-track, .scrollbox::-webkit-scrollbar-track { background: var(--raised); }
+    body::-webkit-scrollbar-thumb, .scrollbox::-webkit-scrollbar-thumb { background: var(--line-strong); border: 2px solid var(--raised); border-radius: 10px; }
+
+    .topbar {
+      position: sticky;
+      inset-block-start: 0;
+      z-index: 20;
+      height: 62px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 0 max(20px, calc((100vw - var(--max)) / 2));
+      background: color-mix(in srgb, var(--surface), transparent 8%);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(16px);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; min-width: max-content; }
+    .brand-mark {
+      width: 30px; height: 30px; border: 1px solid var(--line-strong); border-radius: 8px;
+      display: grid; place-items: center; background: var(--raised); color: var(--signal);
+    }
+    .brand-mark svg { width: 18px; height: 18px; }
+    .brand strong { font-size: 14px; letter-spacing: -.01em; }
+    .brand span { color: var(--muted); font-size: 12px; }
+    .top-nav { display: flex; gap: 4px; margin-inline-start: auto; }
+    .top-nav a {
+      padding: 7px 10px; border-radius: 7px; text-decoration: none; color: var(--muted);
+      font-size: 13px; font-weight: 600;
+    }
+    .top-nav a:hover { color: var(--text); background: var(--raised); }
+    .icon-button {
+      width: 36px; height: 36px; padding: 0; display: grid; place-items: center; cursor: pointer;
+      border: 1px solid var(--line); color: var(--muted); background: var(--surface); border-radius: 8px;
+    }
+    .icon-button:hover { color: var(--text); border-color: var(--line-strong); }
+
+    main { max-width: var(--max); margin: 0 auto; padding: 0 28px 72px; }
+    section { scroll-margin-top: 84px; }
+    .hero {
+      min-height: 430px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(460px, .92fr);
+      align-items: center;
+      gap: 64px;
+      padding: 72px 0 58px;
+      border-bottom: 1px solid var(--line);
+    }
+    .eyebrow { margin: 0 0 16px; color: var(--signal); font: 700 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 0; max-width: 760px; font-size: clamp(46px, 5.7vw, 86px); line-height: .96; letter-spacing: -.065em; font-weight: 760; }
+    .hero-copy { max-width: 690px; margin: 24px 0 0; color: var(--muted); font-size: 17px; }
+    .hero-note { margin-top: 24px; display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+    .hero-note b { color: var(--text); font-family: var(--mono); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--known); box-shadow: 0 0 0 4px var(--known-soft); }
+
+    .signal-board {
+      position: relative; min-height: 290px; padding: 26px; overflow: hidden;
+      border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow);
+    }
+    .signal-board::before {
+      content: ""; position: absolute; inset: 0; opacity: .32; pointer-events: none;
+      background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: linear-gradient(to bottom right, #000, transparent 80%);
+    }
+    .board-label { position: relative; display: flex; justify-content: space-between; color: var(--muted); font: 600 10px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .trace { position: relative; margin-top: 34px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+    .trace::before { content: ""; position: absolute; top: 24px; left: 8%; right: 8%; height: 2px; background: var(--line-strong); }
+    .trace-step { position: relative; text-align: center; min-width: 0; }
+    .trace-node {
+      width: 50px; height: 50px; margin: 0 auto 12px; border: 2px solid var(--line-strong); border-radius: 50%;
+      display: grid; place-items: center; background: var(--surface); color: var(--muted); font: 700 12px var(--mono);
+    }
+    .trace-step.active .trace-node { color: white; background: var(--signal); border-color: var(--signal); box-shadow: 0 0 0 7px var(--signal-soft); }
+    .trace-step strong { display: block; font-size: 13px; }
+    .trace-step small { display: block; color: var(--muted); font: 10px/1.4 var(--mono); margin-top: 4px; }
+    .board-readout { position: relative; margin-top: 28px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--raised); font: 12px/1.5 var(--mono); color: var(--muted); }
+    .board-readout b { color: var(--known); }
+
+    .section-head { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 34px; padding: 62px 0 26px; align-items: start; }
+    .section-index { font: 700 11px/1 var(--mono); color: var(--signal); letter-spacing: .1em; text-transform: uppercase; }
+    .section-title h2 { font-size: clamp(28px, 3vw, 42px); line-height: 1.05; letter-spacing: -.045em; margin: 0; }
+    .section-title p { max-width: 780px; margin: 12px 0 0; color: var(--muted); }
+
+    .architecture-shell { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 20px; }
+    .legend { align-self: start; position: sticky; top: 84px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+    .legend h3 { font-size: 11px; margin: 0 0 14px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+    .legend-item { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--muted); margin-top: 10px; }
+    .legend-swatch { width: 10px; height: 10px; border-radius: 3px; background: var(--signal); }
+    .legend-swatch.compute { background: var(--cyan); }
+    .legend-swatch.policy { background: var(--violet); }
+    .legend-swatch.store { background: var(--warn); }
+    .legend-swatch.derived { background: transparent; border: 2px dashed var(--warn); }
+    .arch-map { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--raised); }
+    .lane-label { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; color: var(--muted); font: 700 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em; margin: 4px 2px 0; }
+    .lane-label::after { content: ""; height: 1px; flex: 1; background: var(--line); }
+    .node {
+      position: relative; padding: 16px; min-height: 112px; border: 1px solid var(--line); border-top: 3px solid var(--signal);
+      border-radius: 11px; background: var(--surface); box-shadow: 0 1px 2px rgba(20,26,35,.04);
+    }
+    .node.compute { border-top-color: var(--cyan); }
+    .node.policy { border-top-color: var(--violet); }
+    .node.store { border-top-color: var(--warn); }
+    .node.derived { border-style: dashed; border-top-style: solid; }
+    .node-tag { color: var(--muted); font: 700 9px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .node h3 { font-size: 15px; line-height: 1.2; margin: 8px 0 7px; }
+    .node p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .span-2 { grid-column: span 2; } .span-3 { grid-column: span 3; } .span-4 { grid-column: span 4; } .span-5 { grid-column: span 5; } .span-6 { grid-column: span 6; }
+    .flow-arrow { grid-column: 1 / -1; height: 28px; display: grid; place-items: center; color: var(--faint); font: 11px var(--mono); }
+    .flow-arrow span::before { content: "↓"; margin-right: 8px; color: var(--signal); }
+    .truth-band { grid-column: 1 / -1; padding: 17px 18px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border: 1px solid color-mix(in srgb, var(--warn), var(--line) 55%); border-radius: 11px; background: var(--warn-soft); }
+    .truth-band strong { font-size: 14px; }
+    .truth-band span { color: color-mix(in srgb, var(--warn), var(--text) 35%); font: 11px var(--mono); }
+
+    .app-flow-frame { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); overflow: hidden; box-shadow: var(--shadow); }
+    .app-flow-caption { display: flex; justify-content: space-between; gap: 20px; padding: 17px 20px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .app-flow-caption strong { color: var(--text); font-size: 13px; }
+    .app-flow-caption code { font: 10px var(--mono); }
+    .app-flow-scroll { overflow-x: auto; padding: 24px; scrollbar-gutter: stable; }
+    .app-flow { min-width: 1120px; display: grid; grid-template-columns: 1.05fr 42px 1.15fr 42px 1.2fr 42px 1.2fr 42px 1.25fr; gap: 10px 0; align-items: stretch; }
+    .app-flow-lane { grid-column: 1 / -1; display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 14px; margin: 10px 0 2px; color: var(--faint); font: 700 9px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .app-flow-lane::after { content: ""; height: 1px; background: var(--line); }
+    .flow-stack { display: grid; gap: 8px; }
+    .diagram-node { min-height: 92px; padding: 14px; border: 1px solid var(--line); border-top: 3px solid var(--signal); border-radius: 10px; background: var(--raised); }
+    .diagram-node.compute { border-top-color: var(--cyan); }
+    .diagram-node.policy { border-top-color: var(--violet); }
+    .diagram-node.store { border-top-color: var(--warn); }
+    .diagram-node.derived { border-style: dashed; border-top-style: solid; }
+    .diagram-node.async { border-top-color: var(--known); }
+    .diagram-node b { display: block; margin: 7px 0 4px; font-size: 13px; }
+    .diagram-node p { margin: 0; color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+    .diagram-tag { color: var(--faint); font: 700 8px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .diagram-arrow { display: grid; place-items: center; color: var(--signal); font: 18px var(--mono); }
+    .diagram-arrow small { display: block; writing-mode: vertical-rl; rotate: 180deg; color: var(--faint); font: 8px/1 var(--mono); letter-spacing: .05em; text-transform: uppercase; }
+    .diagram-wide { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .diagram-return { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 42px 1fr 42px 1fr; align-items: stretch; margin-top: 2px; }
+    .diagram-return .diagram-node { min-height: 82px; }
+    .flow-legend { display: flex; flex-wrap: wrap; gap: 10px 18px; padding: 14px 20px; border-top: 1px solid var(--line); background: var(--raised); }
+    .flow-legend span { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; }
+    .flow-legend i { width: 9px; height: 9px; border-radius: 2px; background: var(--signal); }
+    .flow-legend i.compute { background: var(--cyan); } .flow-legend i.policy { background: var(--violet); } .flow-legend i.store { background: var(--warn); } .flow-legend i.async { background: var(--known); }
+
+    .flow-console { border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
+    .flow-tabs { display: flex; align-items: stretch; gap: 0; border-bottom: 1px solid var(--line); overflow-x: auto; background: var(--raised); }
+    .flow-tab { flex: 1; min-width: 150px; padding: 15px 16px; cursor: pointer; border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--muted); text-align: left; }
+    .flow-tab:hover { background: var(--surface); color: var(--text); }
+    .flow-tab[aria-selected="true"] { color: var(--signal); background: var(--surface); box-shadow: inset 0 -3px var(--signal); }
+    .flow-tab b { display: block; font-size: 13px; }
+    .flow-tab small { font: 10px var(--mono); color: var(--faint); }
+    .flow-panel { display: none; padding: 28px; }
+    .flow-panel.active { display: block; }
+    .flow-summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; margin-bottom: 30px; }
+    .flow-summary h3 { font-size: 24px; letter-spacing: -.03em; margin: 0 0 6px; }
+    .flow-summary p { max-width: 720px; color: var(--muted); margin: 0; font-size: 14px; }
+    .flow-badge { flex: none; padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; font: 700 10px var(--mono); color: var(--muted); }
+    .steps { display: grid; grid-template-columns: repeat(6, minmax(130px, 1fr)); gap: 24px; overflow-x: auto; padding: 4px 2px 14px; }
+    .step { position: relative; min-width: 130px; }
+    .step:not(:last-child)::after { content: "→"; position: absolute; top: 18px; right: -18px; color: var(--line-strong); font: 18px var(--mono); }
+    .step-num { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 9px; background: var(--signal-soft); color: var(--signal); font: 700 11px var(--mono); }
+    .step h4 { font-size: 13px; margin: 12px 0 5px; }
+    .step p { color: var(--muted); font-size: 11px; line-height: 1.45; margin: 0; }
+    .branch-note { margin-top: 20px; padding: 13px 15px; border-left: 3px solid var(--warn); border-radius: 0 8px 8px 0; background: var(--warn-soft); color: color-mix(in srgb, var(--warn), var(--text) 34%); font-size: 12px; }
+
+    .invariants { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .section-title code, .flow-summary code, .branch-note code, .step code, .node code { font: .92em var(--mono); }
+    .rule { padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    .rule-code { color: var(--signal); font: 700 11px var(--mono); }
+    .rule h3 { font-size: 15px; margin: 16px 0 7px; }
+    .rule p { font-size: 12px; color: var(--muted); margin: 0; }
+
+    .data-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(340px, .8fr); gap: 18px; }
+    .table-card, .aside-card { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; }
+    .card-head { padding: 17px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+    .card-head h3 { font-size: 14px; margin: 0; }
+    .card-head code { font: 10px var(--mono); color: var(--muted); }
+    .scrollbox { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 670px; }
+    th { padding: 11px 18px; background: var(--raised); color: var(--muted); text-align: left; font: 700 10px var(--mono); letter-spacing: .05em; text-transform: uppercase; }
+    td { padding: 13px 18px; border-top: 1px solid var(--line); font-size: 12px; vertical-align: top; }
+    td code { font: 11px var(--mono); color: var(--signal); }
+    td:last-child { color: var(--muted); }
+    .aside-card { padding: 20px; }
+    .aside-card h3 { margin: 0 0 16px; font-size: 14px; }
+    .mapping { display: grid; grid-template-columns: auto 18px minmax(0, 1fr); gap: 9px 8px; align-items: center; font: 11px var(--mono); }
+    .mapping .arrow { color: var(--signal); text-align: center; }
+    .mapping .target { color: var(--muted); }
+    .privacy-list { margin: 22px 0 0; padding: 18px 0 0; border-top: 1px solid var(--line); list-style: none; }
+    .privacy-list li { position: relative; padding-left: 22px; margin-top: 10px; color: var(--muted); font-size: 12px; }
+    .privacy-list li::before { content: "×"; position: absolute; left: 2px; color: var(--unknown); font: 700 13px var(--mono); }
+
+    .delivery-map { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); overflow: hidden; box-shadow: var(--shadow); }
+    .delivery-rail { display: grid; grid-template-columns: 1fr 48px 1.35fr 48px 1.1fr; align-items: stretch; padding: 24px; background: var(--raised); }
+    .delivery-stage { min-width: 0; padding: 18px; border: 1px solid var(--line); border-top: 3px solid var(--signal); border-radius: 11px; background: var(--surface); }
+    .delivery-stage.gate { border-top-color: var(--known); }
+    .delivery-stage.route { border-top-color: var(--violet); }
+    .delivery-stage h3 { margin: 8px 0 8px; font-size: 15px; }
+    .delivery-stage p { margin: 0; color: var(--muted); font-size: 12px; }
+    .delivery-arrow { display: grid; place-items: center; color: var(--signal); font: 20px var(--mono); }
+    .check-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; margin-top: 16px; }
+    .check { padding: 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); }
+    .check b { display: block; font-size: 11px; }
+    .check span { display: block; margin-top: 4px; color: var(--muted); font: 9px/1.4 var(--mono); }
+    .deploy-targets { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); }
+    .deploy-target { padding: 20px; }
+    .deploy-target + .deploy-target { border-left: 1px solid var(--line); }
+    .deploy-target h3 { margin: 8px 0 7px; font-size: 14px; }
+    .deploy-target p { margin: 0; color: var(--muted); font-size: 12px; }
+    .deploy-target code { font: 10px/1.4 var(--mono); color: var(--signal); }
+    .delivery-foot { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 15px 20px; border-top: 1px solid var(--line); background: var(--warn-soft); color: color-mix(in srgb, var(--warn), var(--text) 35%); font-size: 11px; }
+    .delivery-foot b { color: var(--text); }
+
+    .endpoint-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .endpoint-group { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 18px; }
+    .endpoint-group h3 { font-size: 13px; margin: 0 0 13px; }
+    .endpoint { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 8px; align-items: baseline; margin-top: 9px; }
+    .method { font: 700 9px var(--mono); color: var(--signal); }
+    .method.post { color: var(--known); } .method.put { color: var(--warn); } .method.delete { color: var(--unknown); }
+    .endpoint code { min-width: 0; overflow-wrap: anywhere; font: 10px/1.35 var(--mono); color: var(--muted); }
+
+    .footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 12px; }
+    .footer code { font: 11px var(--mono); }
+
+    @media (max-width: 1100px) {
+      .hero { grid-template-columns: 1fr; gap: 40px; }
+      .signal-board { max-width: 720px; }
+      .invariants { grid-template-columns: repeat(2, 1fr); }
+      .endpoint-grid { grid-template-columns: repeat(2, 1fr); }
+      .node.span-2 { grid-column: span 4; }
+      .node.span-3 { grid-column: span 6; }
+      .node.span-4 { grid-column: span 6; }
+      .node.span-5, .node.span-6 { grid-column: span 12; }
+    }
+    @media (max-width: 760px) {
+      .top-nav { display: none; }
+      .topbar { padding: 0 16px; }
+      .icon-button { margin-inline-start: auto; }
+      main { padding-inline: 16px; }
+      .hero { min-height: 0; padding: 54px 0 42px; }
+      h1 { font-size: clamp(42px, 15vw, 66px); }
+      .signal-board { padding: 20px 14px; min-height: 280px; }
+      .trace { gap: 5px; }
+      .trace-node { width: 42px; height: 42px; }
+      .trace-step strong { font-size: 11px; }
+      .trace-step small { font-size: 8px; }
+      .section-head { grid-template-columns: 1fr; gap: 12px; padding-top: 48px; }
+      .architecture-shell { grid-template-columns: 1fr; }
+      .legend { position: static; display: flex; flex-wrap: wrap; gap: 7px 16px; }
+      .legend h3 { width: 100%; margin-bottom: 2px; }
+      .legend-item { margin: 0; }
+      .arch-map { padding: 12px; }
+      .node.span-2, .node.span-3, .node.span-4, .node.span-5, .node.span-6 { grid-column: 1 / -1; }
+      .truth-band { align-items: flex-start; flex-direction: column; }
+      .flow-panel { padding: 20px 16px; }
+      .flow-summary { flex-direction: column; }
+      .invariants, .data-grid, .endpoint-grid { grid-template-columns: 1fr; }
+      .delivery-rail { grid-template-columns: 1fr; gap: 10px; padding: 14px; }
+      .delivery-arrow { min-height: 28px; rotate: 90deg; }
+      .check-grid, .deploy-targets { grid-template-columns: 1fr; }
+      .deploy-target + .deploy-target { border-left: 0; border-top: 1px solid var(--line); }
+      .delivery-foot { align-items: flex-start; flex-direction: column; }
+      .footer { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; }
+    }
+    @media print {
+      :root { --bg: #fff; --surface: #fff; --raised: #f5f7fa; }
+      .topbar, .flow-tabs, .icon-button { display: none !important; }
+      main { max-width: none; padding: 0; }
+      .hero { min-height: 0; page-break-after: always; }
+      .flow-panel { display: block !important; page-break-inside: avoid; }
+      .flow-panel + .flow-panel { border-top: 1px solid var(--line); }
+      .legend { position: static; }
+      .node, .rule, .table-card, .aside-card, .endpoint-group, .delivery-map { break-inside: avoid; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><circle cx="12" cy="11" r="3.2"/><path d="M7.5 18c.8-2.2 2.3-3.3 4.5-3.3s3.7 1.1 4.5 3.3"/></svg>
+      </div>
+      <div><strong>System Atlas</strong><br><span>face_recognition_server</span></div>
+    </div>
+    <nav class="top-nav" aria-label="Page sections">
+      <a href="#architecture">Architecture</a><a href="#boundaries">Frontend / backend</a><a href="#delivery">CI / CD</a><a href="#application-flow">App flow</a><a href="#cache-db">Cache DB</a><a href="#data">Data</a><a href="#api">API</a>
+    </nav>
+    <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch to dark theme" title="Toggle theme">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 15.3A8.5 8.5 0 118.7 4a7 7 0 0011.3 11.3z"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">Repository architecture / 2026.10</p>
+        <h1 id="page-title">One image in.<br>One decision out.</h1>
+        <p class="hero-copy">An open-set face recognition server. InsightFace produces normalized 512-dimensional vectors, FAISS retrieves candidates, and the database (SQLite locally, Postgres on Supabase in production) remains the canonical record of people, templates, settings, visits and operational events. Around that core sit operator login, attendance, visitor management, alerts and short-lived search sessions.</p>
+        <div class="hero-note"><span class="status-dot" aria-hidden="true"></span><span>Decision output is a cosine similarity — <b>never a probability</b>.</span></div>
+      </div>
+      <div class="signal-board" aria-label="Recognition signal overview">
+        <div class="board-label"><span>Signal trace / recognition</span><span>OPEN SET · 1:N</span></div>
+        <div class="trace">
+          <div class="trace-step"><div class="trace-node">01</div><strong>Detect</strong><small>SCRFD + landmarks</small></div>
+          <div class="trace-step"><div class="trace-node">02</div><strong>Measure</strong><small>quality + liveness</small></div>
+          <div class="trace-step active"><div class="trace-node">512</div><strong>Embed</strong><small>ArcFace · unit norm</small></div>
+          <div class="trace-step"><div class="trace-node">N</div><strong>Decide</strong><small>FAISS + threshold</small></div>
+        </div>
+        <div class="board-readout">vector → top search_k templates → group by person → <b>KNOWN</b> / UNKNOWN → respond, then log</div>
+      </div>
+    </section>
+
+    <section id="architecture" aria-labelledby="architecture-title">
+      <div class="section-head">
+        <div class="section-index">01 / System map</div>
+        <div class="section-title"><h2 id="architecture-title">Runtime architecture</h2><p>One uvicorn worker owns one lazily composed object graph (<code>app/container.py</code>). The lifespan warms it before serving, so models, repositories, policies, the in-memory index and the background sweepers are stable across request threads. In production the process runs in Docker on a GCP VM behind nginx, with OpenVINO as the first execution provider.</p></div>
+      </div>
+      <div class="architecture-shell">
+        <aside class="legend" aria-label="Architecture legend">
+          <h3>Component type</h3>
+          <div class="legend-item"><span class="legend-swatch"></span>Interface</div>
+          <div class="legend-item"><span class="legend-swatch compute"></span>Inference</div>
+          <div class="legend-item"><span class="legend-swatch policy"></span>Decision policy</div>
+          <div class="legend-item"><span class="legend-swatch store"></span>Canonical store</div>
+          <div class="legend-item"><span class="legend-swatch derived"></span>Derived / ephemeral</div>
+        </aside>
+        <div class="arch-map">
+          <div class="lane-label">Clients &amp; entry points</div>
+          <article class="node span-3"><span class="node-tag">Next.js · ../dashboard</span><h3>Management dashboard</h3><p>Operator UI behind face or password login; proxies with the API key and forwards the browser's IP as <code>X-Client-IP</code>.</p></article>
+          <article class="node span-3"><span class="node-tag">Browser</span><h3>Vanilla JS console</h3><p>No-build SPA at <code>/</code> (off in prod). Live loop sends <code>source=live</code>, <code>attributes=false</code>.</p></article>
+          <article class="node span-2"><span class="node-tag">Mobile</span><h3>Expo client</h3><p>ML Kit on device; uploads face crops ≤400 px, never whole photos.</p></article>
+          <article class="node span-2"><span class="node-tag">Edge</span><h3>Jetson client</h3><p>Embeddings and liveness on device; sends vectors to <code>/match</code>.</p></article>
+          <article class="node span-2"><span class="node-tag">CLI · media</span><h3>Scripts &amp; webcam</h3><p>Enroll, import, calibrate, migrate; webcam IoU tracker.</p></article>
+
+          <div class="flow-arrow"><span>nginx → HTTP / multipart images / base64 little-endian float32 / direct Python calls</span></div>
+          <div class="lane-label">Application boundary</div>
+          <article class="node span-3"><span class="node-tag">FastAPI · /api/v1</span><h3>API routes</h3><p>API key + Bearer session, inference slot, schemas, client IP, Server-Timing; event writes as background tasks.</p></article>
+          <article class="node span-3"><span class="node-tag">Composition</span><h3>Container</h3><p>Cached services, warm-up, index reconciliation, visit and unknown-hold sweepers.</p></article>
+          <article class="node policy span-3"><span class="node-tag">Policy</span><h3>Recognition services</h3><p>Recognizer, Verifier, IdentityMatcher, ThresholdService, LivenessService switch.</p></article>
+          <article class="node policy span-3"><span class="node-tag">Write path</span><h3>Enrollment service</h3><p>Quality/liveness gates, duplicate reviews, DB-first commit with index rollback.</p></article>
+          <article class="node policy span-3"><span class="node-tag">app/auth.py</span><h3>AuthService</h3><p>Face and email/password login for the admin group; HMAC tokens, refresh, revocation.</p></article>
+          <article class="node policy span-3"><span class="node-tag">Operations</span><h3>Logs, alerts &amp; analytics</h3><p>Access log, unknown-face live hold, AlertService, attendance, overview, audit.</p></article>
+          <article class="node policy span-3"><span class="node-tag">app/visits.py</span><h3>VisitService</h3><p>Visitor enrollment, host lookup, kiosk check-in/out, purge after the visit window.</p></article>
+          <article class="node derived span-3"><span class="node-tag">Process memory</span><h3>Search sessions</h3><p>Reference sets and photo sorts: embeddings held 30 min, never persisted.</p></article>
+
+          <div class="flow-arrow"><span>detect · assess · embed · search · aggregate · threshold</span></div>
+          <div class="lane-label">Model &amp; compute plane</div>
+          <article class="node compute span-3"><span class="node-tag">InsightFace buffalo_l</span><h3>FaceEngine</h3><p>SCRFD (320 for small crops, 640 otherwise), optional pose, ArcFace; OpenVINO on x86.</p></article>
+          <article class="node compute span-3"><span class="node-tag">Quality</span><h3>QualityChecker</h3><p>Size, blur, exposure, pose, detector score; optional eDifFIQA-T.</p></article>
+          <article class="node compute span-3"><span class="node-tag">Anti-spoof</span><h3>Liveness model</h3><p>80×80 single-frame addon; always checked for face login.</p></article>
+          <article class="node compute span-3"><span class="node-tag">Optional</span><h3>Attributes</h3><p>Age/sex and HSEmotion expression; display only unless an opt-in store is on.</p></article>
+
+          <div class="flow-arrow"><span>stable embedding_id joins the canonical and search planes</span></div>
+          <div class="lane-label">Persistence &amp; external services</div>
+          <article class="node store span-3"><span class="node-tag">Canonical · SQLite | Postgres</span><h3>Database</h3><p><code>faces.db</code> locally; Supabase schema <code>recognition</code> in prod (pooler, RLS, no Data API).</p></article>
+          <article class="node store derived span-3"><span class="node-tag">Read cache · SQLite</span><h3>Metadata replica</h3><p><code>replica.db</code> caches people and template display metadata per API instance; every miss or unhealthy state falls back to Postgres.</p></article>
+          <article class="node store derived span-3"><span class="node-tag">Derived · FAISS</span><h3>IndexIDMap2(IndexFlatIP)</h3><p>Inner-product search over unit vectors; rebuilt whenever IDs diverge.</p></article>
+          <article class="node store span-3"><span class="node-tag">ImageStore · local | Supabase</span><h3>Thumbnails &amp; snapshots</h3><p>Opt-in; private bucket, served only through API routes, deleted with their owner.</p></article>
+          <article class="node span-3"><span class="node-tag">Outbound</span><h3>Mailjet &amp; IP geolocation</h3><p>Alert and reset emails on daemon threads; cached, best-effort event locations.</p></article>
+          <div class="truth-band"><strong>The database is the source of truth.</strong><span>embedding_id = FAISS vector id → person_id → metadata</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="boundaries" aria-labelledby="boundaries-title">
+      <div class="section-head">
+        <div class="section-index">02 / Frontend + backend</div>
+        <div class="section-title"><h2 id="boundaries-title">Application boundaries</h2><p>The repository has three user-facing clients and one primary recognition backend. They share the generated OpenAPI contract, but each client owns a different amount of capture and presentation logic. The Next.js server is a security-preserving proxy, not the system of record.</p></div>
+      </div>
+      <div class="data-grid">
+        <div class="table-card">
+          <div class="card-head"><h3>Frontend architecture</h3><code>browser · native · local console</code></div>
+          <div class="scrollbox">
+            <table>
+              <thead><tr><th>Surface</th><th>Structure</th><th>Backend boundary</th></tr></thead>
+              <tbody>
+                <tr><td><code>../dashboard</code></td><td>Next.js 16 App Router; route pages compose feature screens, shared controls and typed API helpers. TanStack Query owns remote UI state.</td><td>The browser calls same-origin <code>/api/v1/*</code>. A server route forwards the API key, httpOnly session and trusted client IP; requests use <code>no-store</code>.</td></tr>
+                <tr><td><code>../face_recogntion_app</code></td><td>Expo Router / React Native. Settings and session tokens live in SecureStore; ML Kit detects faces and VisionCamera supplies live boxes.</td><td>The phone uploads JPEG face crops ≤400 px to the same API. It sends its Bearer token and reads <code>Server-Timing</code>; it never receives embeddings.</td></tr>
+                <tr><td><code>frontend/</code></td><td>No-build HTML, CSS and ES modules. <code>app.js</code> owns routing/theme, <code>js/api.js</code> transport, and <code>js/views/*</code> feature screens.</td><td>Mounted by FastAPI only when enabled. Calls relative <code>/api/v1</code>; static modules revalidate with <code>no-cache</code>.</td></tr>
+                <tr><td><code>app/edge</code></td><td>Headless edge client rather than a visual UI. It detects, checks liveness and extracts embeddings locally.</td><td>Sends model-tagged vectors to <code>/match</code>; the server still owns threshold and liveness policy.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <aside class="aside-card">
+          <h3>Dashboard request boundary</h3>
+          <div class="mapping">
+            <code>React screen</code><span class="arrow">→</span><span class="target">typed <code>lib/api-client.ts</code></span>
+            <code>/api/v1/*</code><span class="arrow">→</span><span class="target">Next.js catch-all route</span>
+            <code>httpOnly cookie</code><span class="arrow">→</span><span class="target">Authorization: Bearer</span>
+            <code>server env</code><span class="arrow">→</span><span class="target">X-API-Key</span>
+            <code>browser IP</code><span class="arrow">→</span><span class="target">trusted X-Client-IP</span>
+            <code>FastAPI JSON</code><span class="arrow">→</span><span class="target">generated TypeScript contract</span>
+          </div>
+          <ul class="privacy-list">
+            <li>The API key never ships to browser JavaScript</li>
+            <li>The dashboard does not connect to Postgres or Supabase directly</li>
+            <li>A 401 clears the proxy session cookie</li>
+            <li>All biometric decisions remain server-side</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="arch-map" style="margin-top: 18px">
+        <div class="lane-label">Backend architecture · one warmed object graph per process</div>
+        <article class="node span-3"><span class="node-tag">Transport</span><h3>FastAPI routers</h3><p>Authentication, request IDs, rate limits, upload decoding, schemas, error mapping and response headers.</p></article>
+        <article class="node policy span-3"><span class="node-tag">Application</span><h3>Workflow services</h3><p>Recognition, verification, enrollment, visitors, attendance, authentication, alerts and event recording.</p></article>
+        <article class="node compute span-3"><span class="node-tag">Compute</span><h3>Inference services</h3><p>Detection, quality, pose, liveness, ArcFace embedding and optional attributes behind a bounded inference slot.</p></article>
+        <article class="node store span-3"><span class="node-tag">Infrastructure</span><h3>Repositories &amp; stores</h3><p>Portable SQL repositories, Postgres/SQLite adapters, FAISS, ImageStore, replica and outbound integrations.</p></article>
+        <div class="flow-arrow"><span>Container creates and shares dependencies; routes translate HTTP and delegate domain work</span></div>
+        <article class="node policy span-4"><span class="node-tag">Write rule</span><h3>Canonical first</h3><p>Transactions commit to the database before derived indexes and caches are refreshed.</p></article>
+        <article class="node derived span-4"><span class="node-tag">Side effects</span><h3>Respond, then record</h3><p>Recognition logging, snapshots and alerts run after the response and are isolated from failures.</p></article>
+        <article class="node derived span-4"><span class="node-tag">Process model</span><h3>Single worker</h3><p>Models and mutable FAISS state are process-local; horizontal writers require a shared index design.</p></article>
+      </div>
+      <div class="branch-note"><code>app/management/</code> is a separate asynchronous FastAPI/SQLAlchemy management-service scaffold. The current Next.js dashboard does not call it; its active proxy target is the primary recognition API created by <code>app/api/main.py</code>.</div>
+    </section>
+
+    <section id="delivery" aria-labelledby="delivery-title">
+      <div class="section-head">
+        <div class="section-index">03 / CI + CD</div>
+        <div class="section-title"><h2 id="delivery-title">Change-to-production pipeline</h2><p>Every push and pull request runs the same backend quality gates. Only a successful push to <code>main</code> reaches deployment, where changed paths select the smallest safe production target: the API VM, the Cloudflare wake edge, or the Cloud Run wake controller.</p></div>
+      </div>
+      <div class="delivery-map">
+        <div class="delivery-rail">
+          <article class="delivery-stage">
+            <span class="node-tag">GitHub event</span>
+            <h3>Push or pull request</h3>
+            <p>Superseded pull-request runs cancel. Push runs remain independent because each commit range owns its own deployment classification.</p>
+          </article>
+          <div class="delivery-arrow" aria-hidden="true">→</div>
+          <article class="delivery-stage gate">
+            <span class="node-tag">ci.yml · required gates</span>
+            <h3>Validate the repository</h3>
+            <p>Python, lint, infrastructure syntax and both production images are checked before a deployment job can start.</p>
+            <div class="check-grid" aria-label="Continuous integration checks">
+              <div class="check"><b>Contract + tests</b><span>OpenAPI drift · pytest</span></div>
+              <div class="check"><b>Static checks</b><span>ruff · Worker parse</span></div>
+              <div class="check"><b>Infrastructure</b><span>Ansible syntax</span></div>
+              <div class="check"><b>API image</b><span>build · native import · OpenVINO</span></div>
+              <div class="check"><b>Wake image</b><span>controller Docker build</span></div>
+            </div>
+          </article>
+          <div class="delivery-arrow" aria-hidden="true">→</div>
+          <article class="delivery-stage route">
+            <span class="node-tag">main only · path classifier</span>
+            <h3>Route the release</h3>
+            <p>The <code>changes</code> job diffs the pushed commit range. Unknown history chooses a full server deploy instead of guessing.</p>
+          </article>
+        </div>
+        <div class="deploy-targets">
+          <article class="deploy-target"><span class="node-tag">Server · app or full</span><h3>GCP VM</h3><p><code>app/ frontend/ scripts/ config</code> use tagged Ansible tasks. Templates, inventory, host packages, TLS and system units trigger the full playbook. The job starts an idle VM, deploys serially, then checks the public health endpoint.</p></article>
+          <article class="deploy-target"><span class="node-tag">Edge wake path</span><h3>Cloudflare Worker</h3><p>Changes to <code>cloudflare-wake-worker.js</code> or <code>wrangler.toml</code> deploy with pinned Wrangler. Worker secrets remain in Cloudflare, outside the repository.</p></article>
+          <article class="deploy-target"><span class="node-tag">Private controller</span><h3>Cloud Run</h3><p>Wake-controller changes build and push a commit-addressed image to Artifact Registry, then update the private Cloud Run service while preserving its runtime identity and secrets.</p></article>
+        </div>
+        <div class="delivery-foot"><span><b>Identity boundary:</b> GitHub uses Workload Identity Federation for GCP; no long-lived Google service-account key is stored.</span><span><b>Promotion rule:</b> docs, tests and mobile-only changes do not deploy the server.</span></div>
+      </div>
+    </section>
+
+    <section id="application-flow" aria-labelledby="application-flow-title">
+      <div class="section-head">
+        <div class="section-index">04 / End-to-end flow</div>
+        <div class="section-title"><h2 id="application-flow-title">Application flow diagram</h2><p>This diagram follows a request from capture or operator action to the immediate response, then separates durable writes and best-effort work that continues after recognition has answered.</p></div>
+      </div>
+      <figure class="app-flow-frame" aria-labelledby="application-flow-title application-flow-caption">
+        <figcaption class="app-flow-caption" id="application-flow-caption"><strong>Request, decision and persistence path</strong><code>solid = request path · dashed = derived state</code></figcaption>
+        <div class="app-flow-scroll" tabindex="0" aria-label="Scrollable end-to-end application flow diagram">
+          <div class="app-flow">
+            <div class="app-flow-lane">01 · Entry points</div>
+            <div class="flow-stack">
+              <div class="diagram-node"><span class="diagram-tag">Web</span><b>Next.js dashboard</b><p>Same-origin requests; session remains in an httpOnly cookie.</p></div>
+              <div class="diagram-node"><span class="diagram-tag">Native</span><b>Expo mobile app</b><p>On-device detection; uploads bounded JPEG face crops.</p></div>
+              <div class="diagram-node"><span class="diagram-tag">Local web</span><b>Vanilla console</b><p>Direct relative API calls when the embedded frontend is enabled.</p></div>
+              <div class="diagram-node"><span class="diagram-tag">Device / scripts</span><b>Edge and CLI</b><p>Edge sends embeddings; CLI may call services in-process.</p></div>
+            </div>
+            <div class="diagram-arrow"><small>HTTPS / Python</small><span aria-hidden="true">→</span></div>
+            <div class="flow-stack">
+              <div class="diagram-node"><span class="diagram-tag">Dashboard boundary</span><b>Next.js API proxy</b><p>Adds server-only API key, Bearer session and trusted client IP.</p></div>
+              <div class="diagram-node"><span class="diagram-tag">Production edge</span><b>nginx</b><p>TLS termination, forwarded peer address and request routing.</p></div>
+              <div class="diagram-node"><span class="diagram-tag">Direct clients</span><b>API / Python entry</b><p>Mobile, console and edge use HTTP; CLI scripts may enter the same service layer directly.</p></div>
+            </div>
+            <div class="diagram-arrow" aria-hidden="true">→</div>
+            <div class="diagram-node"><span class="diagram-tag">FastAPI middleware</span><b>Admission and identity</b><p>Request ID, size limit, rate limit, API key, session, client IP and inference semaphore.</p></div>
+            <div class="diagram-arrow" aria-hidden="true">→</div>
+            <div class="diagram-node"><span class="diagram-tag">/api/v1</span><b>Domain router</b><p>Validates schemas and delegates recognition, people, visits, auth, analytics or settings work.</p></div>
+            <div class="diagram-arrow" aria-hidden="true">→</div>
+            <div class="diagram-node policy"><span class="diagram-tag">Composition root</span><b>Container</b><p>Resolves the warmed repositories, policies, models and workflow service shared by the request.</p></div>
+
+            <div class="app-flow-lane">02 · Decision path</div>
+            <div class="diagram-node policy"><span class="diagram-tag">Workflow</span><b>Application service</b><p>Recognizer, Verifier, EnrollmentService, VisitService or AuthService coordinates the use case.</p></div>
+            <div class="diagram-arrow" aria-hidden="true">→</div>
+            <div class="diagram-node compute"><span class="diagram-tag">Image requests</span><b>Detect and assess</b><p>Decode → SCRFD → quality → optional pose, liveness and attributes.</p></div>
+            <div class="diagram-arrow" aria-hidden="true">→</div>
+            <div class="diagram-node compute"><span class="diagram-tag">Identity signal</span><b>Embed or verify</b><p>ArcFace produces a normalized 512-D vector; verification compares claimed templates directly.</p></div>
+            <div class="diagram-arrow" aria-hidden="true">→</div>
+            <div class="diagram-node policy"><span class="diagram-tag">Open-set policy</span><b>Search and decide</b><p>FAISS candidates → group by person → threshold, quality, liveness and active-status gates.</p></div>
+            <div class="diagram-arrow" aria-hidden="true">→</div>
+            <div class="diagram-node"><span class="diagram-tag">Outcome</span><b>Matched or unknown</b><p>Returns raw similarity and reasons. A null threshold always produces UNKNOWN.</p></div>
+
+            <div class="app-flow-lane">03 · State and storage</div>
+            <div class="diagram-wide">
+              <div class="diagram-node store"><span class="diagram-tag">Canonical</span><b>Postgres / local SQLite</b><p>People, vectors, settings, sessions, visits and operational records.</p></div>
+              <div class="diagram-node store derived"><span class="diagram-tag">Search projection</span><b>FAISS index</b><p>Derived from canonical embedding IDs and rebuilt on mismatch.</p></div>
+              <div class="diagram-node store derived"><span class="diagram-tag">Read projection</span><b>Metadata replica.db</b><p>People and template display metadata only; falls back to Postgres.</p></div>
+              <div class="diagram-node store"><span class="diagram-tag">Private artifacts</span><b>ImageStore</b><p>Optional thumbnails and snapshots in local storage or Supabase.</p></div>
+            </div>
+
+            <div class="app-flow-lane">04 · Response and side effects</div>
+            <div class="diagram-return">
+              <div class="diagram-node"><span class="diagram-tag">Synchronous</span><b>API response</b><p>JSON plus request ID and Server-Timing returns as soon as the decision is ready.</p></div>
+              <div class="diagram-arrow" aria-hidden="true">→</div>
+              <div class="diagram-node"><span class="diagram-tag">Client update</span><b>Render the result</b><p>UI shows identity state, raw similarity, reasons and recoverable actions.</p></div>
+              <div class="diagram-arrow" aria-hidden="true">↔</div>
+              <div class="diagram-node async"><span class="diagram-tag">After response</span><b>Record and notify</b><p>Access/unknown event → snapshot → alert/email. Failures are logged and never change the answer.</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="flow-legend" aria-label="Diagram legend"><span><i></i>Interface / transport</span><span><i class="compute"></i>Inference</span><span><i class="policy"></i>Policy / workflow</span><span><i class="store"></i>Persistent or derived store</span><span><i class="async"></i>Post-response side effect</span></div>
+      </figure>
+      <div class="branch-note"><strong>Latency boundary:</strong> image decoding and model work happen before the response. Recognition-event rows, snapshots and alerts happen afterward, so a slow remote database or email provider does not add to the recognition decision time.</div>
+    </section>
+
+    <section id="cache-db" aria-labelledby="cache-db-title">
+      <div class="section-head">
+        <div class="section-index">05 / Cache database</div>
+        <div class="section-title"><h2 id="cache-db-title">Derived state and cache database</h2><p>Production uses several deliberately separate accelerators. None replaces the canonical Postgres database. The item commonly called the “cache DB” is a selective SQLite metadata replica on each API instance—not Redis and not a backup.</p></div>
+      </div>
+      <div class="arch-map">
+        <div class="lane-label">Metadata replica synchronization</div>
+        <article class="node store span-3"><span class="node-tag">Source of truth</span><h3>Postgres</h3><p>Canonical <code>persons</code> and <code>embeddings</code> writes commit in the <code>recognition</code> schema.</p></article>
+        <article class="node store derived span-3"><span class="node-tag">Ordered feed</span><h3>replica_changes</h3><p>Postgres triggers append table, row key, operation and sequence for person/template mutations.</p></article>
+        <article class="node derived span-3"><span class="node-tag">Background poller</span><h3>Synchronizer</h3><p>Every 2 s, consumes ordered batches of up to 500 and applies idempotent upserts/deletes.</p></article>
+        <article class="node store derived span-3"><span class="node-tag">Per instance · local disk</span><h3>/data/metadata/replica.db</h3><p>WAL SQLite with people, embedding display metadata and its last applied sequence.</p></article>
+        <div class="flow-arrow"><span>API reads use the replica only while ready; otherwise the repository immediately reads Postgres</span></div>
+        <article class="node policy span-4"><span class="node-tag">Startup</span><h3>Validate and rebuild</h3><p>Integrity failure, an uninitialized file or an impossible cursor causes a repeatable-read snapshot rebuild before the cache becomes ready.</p></article>
+        <article class="node policy span-4"><span class="node-tag">Read after write</span><h3>Catch up immediately</h3><p>After successful API mutations the middleware asks the replica to consume the feed; failure never rolls back the canonical write.</p></article>
+        <article class="node policy span-4"><span class="node-tag">Failure mode</span><h3>Disable and fall back</h3><p>Sync errors mark the replica unready, use Postgres for reads, and retry with bounded backoff up to 30 seconds.</p></article>
+      </div>
+      <div class="data-grid" style="margin-top: 18px">
+        <div class="table-card">
+          <div class="card-head"><h3>Cache and derived-state inventory</h3><code>scope · freshness · recovery</code></div>
+          <div class="scrollbox">
+            <table>
+              <thead><tr><th>Layer</th><th>Contents / policy</th><th>Failure or invalidation</th></tr></thead>
+              <tbody>
+                <tr><td><code>replica.db</code></td><td>Durable local cache of people plus template metadata only; trigger feed, 2 s polling, batch 500.</td><td>Fallback to Postgres; rebuildable and excluded from backups.</td></tr>
+                <tr><td><code>faces.faiss</code></td><td>Normalized vectors keyed by stable <code>embedding_id</code>; exact inner-product search.</td><td>Database ID mismatch rebuilds the entire index at startup.</td></tr>
+                <tr><td><code>cache/images</code></td><td>Private Supabase image bytes, size-bounded to 256 MiB in production, plus an in-process 2,048-item LRU.</td><td>Object writes/deletes update caches; a miss fetches the private bucket.</td></tr>
+                <tr><td><code>settings memory</code></td><td>Whole settings table for 5 s on Postgres; same-process writes update it immediately.</td><td>Other instances become visible after TTL.</td></tr>
+                <tr><td><code>person memory</code></td><td>Matched person records for 5 s, bounded at 50,000 entries; replica is preferred first.</td><td>Repository writes evict the person; remote changes age out.</td></tr>
+                <tr><td><code>TTLStore</code></td><td>Reference sets and photo-sort sessions; 30-minute sliding TTL and bounded session counts.</td><td>Explicit delete, TTL, eviction or process restart.</td></tr>
+                <tr><td><code>client image cache</code></td><td>Immutable thumbnail/snapshot responses use validators and private cache headers.</td><td>Content-key URLs and ETags prevent stale identity metadata.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <aside class="aside-card">
+          <h3>What replica.db never stores</h3>
+          <ul class="privacy-list" style="margin-top: 0; padding-top: 0; border-top: 0">
+            <li>Face vectors or FAISS search data</li>
+            <li>Passwords, credentials or sessions</li>
+            <li>Access, unknown-face or audit events</li>
+            <li>Visits, alerts or runtime settings</li>
+            <li>Thumbnail or snapshot bytes</li>
+          </ul>
+          <div class="branch-note"><strong>Operational rule:</strong> keep one replica file per API instance on local persistent disk. Never share it over a network filesystem, restore it as a backup, or promote it to canonical storage.</div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="flows" aria-labelledby="flows-title">
+      <div class="section-head">
+        <div class="section-index">06 / Signal paths</div>
+        <div class="section-title"><h2 id="flows-title">Request flows</h2><p>The same core services serve dashboard, console, CLI, webcam, mobile, kiosk and edge callers. Choose a trace to see where inference, policy, persistence, and logging occur.</p></div>
+      </div>
+      <div class="flow-console">
+        <div class="flow-tabs" role="tablist" aria-label="Request flow selector">
+          <button class="flow-tab" role="tab" aria-selected="true" aria-controls="flow-recognition" id="tab-recognition" data-flow="recognition"><b>Recognition</b><small>image → identity</small></button>
+          <button class="flow-tab" role="tab" aria-selected="false" aria-controls="flow-enrollment" id="tab-enrollment" data-flow="enrollment" tabindex="-1"><b>Enrollment</b><small>images → templates</small></button>
+          <button class="flow-tab" role="tab" aria-selected="false" aria-controls="flow-verification" id="tab-verification" data-flow="verification" tabindex="-1"><b>Verification</b><small>claim + image</small></button>
+          <button class="flow-tab" role="tab" aria-selected="false" aria-controls="flow-edge" id="tab-edge" data-flow="edge" tabindex="-1"><b>Edge matching</b><small>vectors → identity</small></button>
+          <button class="flow-tab" role="tab" aria-selected="false" aria-controls="flow-login" id="tab-login" data-flow="login" tabindex="-1"><b>Face login</b><small>face → session</small></button>
+          <button class="flow-tab" role="tab" aria-selected="false" aria-controls="flow-visit" id="tab-visit" data-flow="visit" tabindex="-1"><b>Visitor kiosk</b><small>frame → check-in</small></button>
+          <button class="flow-tab" role="tab" aria-selected="false" aria-controls="flow-search" id="tab-search" data-flow="search" tabindex="-1"><b>Targeted search</b><small>references → frames</small></button>
+          <button class="flow-tab" role="tab" aria-selected="false" aria-controls="flow-analysis" id="tab-analysis" data-flow="analysis" tabindex="-1"><b>Analysis</b><small>image → attributes</small></button>
+        </div>
+
+        <div class="flow-panel active" id="flow-recognition" role="tabpanel" aria-labelledby="tab-recognition">
+          <div class="flow-summary"><div><h3>Open-set 1:N recognition</h3><p><code>POST /api/v1/recognize</code> finds every face (or the largest <code>max_faces</code>), evaluates it, and searches the gallery. Matching requires quality policy, liveness policy, an active person and the calibrated threshold to all pass.</p></div><span class="flow-badge">READ · WRITE AFTER RESPONSE</span></div>
+          <div class="steps">
+            <div class="step"><span class="step-num">01</span><h4>Take a slot</h4><p>Inference slot (503 after 2 s); byte and pixel limits on decode.</p></div>
+            <div class="step"><span class="step-num">02</span><h4>Detect faces</h4><p>SCRFD boxes, landmarks and scores; smaller detector for crops.</p></div>
+            <div class="step"><span class="step-num">03</span><h4>Analyze</h4><p>Quality and liveness; demographics and expression unless <code>attributes=false</code>.</p></div>
+            <div class="step"><span class="step-num">04</span><h4>Embed &amp; search</h4><p>Normalized (512,) vector; top search_k templates grouped per person.</p></div>
+            <div class="step"><span class="step-num">05</span><h4>Decide</h4><p>Threshold → match / unknown; disabled people never match.</p></div>
+            <div class="step"><span class="step-num">06</span><h4>Respond, then log</h4><p>Background task: access or unknown row, snapshot, alerts.</p></div>
+          </div>
+          <div class="branch-note">No configured match threshold means every face is UNKNOWN. <code>source=live</code> unknown faces are held per track and written once (after 2 s, or when the track ends), and dropped if the track later matches. A remote database adds nothing to recognition latency.</div>
+        </div>
+
+        <div class="flow-panel" id="flow-enrollment" role="tabpanel" aria-labelledby="tab-enrollment" hidden>
+          <div class="flow-summary"><div><h3>Transactional enrollment</h3><p><code>POST /api/v1/persons</code> accepts multiple source images, but each must contain exactly one usable live face. Duplicate findings are reported and queued for review, never merged.</p></div><span class="flow-badge">CANONICAL WRITE</span></div>
+          <div class="steps">
+            <div class="step"><span class="step-num">01</span><h4>Validate each image</h4><p>Exactly one detected face is required.</p></div>
+            <div class="step"><span class="step-num">02</span><h4>Gate quality</h4><p>Reject size, blur, exposure, pose or confidence failures.</p></div>
+            <div class="step"><span class="step-num">03</span><h4>Gate liveness</h4><p>When liveness is on, spoofs never progress.</p></div>
+            <div class="step"><span class="step-num">04</span><h4>Check duplicates</h4><p>POSSIBLE_DUPLICATE opens a <code>duplicate_reviews</code> row.</p></div>
+            <div class="step"><span class="step-num">05</span><h4>Commit database</h4><p>Person, email, group and embeddings in one transaction.</p></div>
+            <div class="step"><span class="step-num">06</span><h4>Project to FAISS</h4><p>Add stable IDs, save index, then audit with the actor.</p></div>
+          </div>
+          <div class="branch-note">If the index update fails after the database commits, enrollment removes the committed rows and re-raises. Opt-in thumbnails and face profiles may fail without invalidating stored templates.</div>
+        </div>
+
+        <div class="flow-panel" id="flow-verification" role="tabpanel" aria-labelledby="tab-verification" hidden>
+          <div class="flow-summary"><div><h3>Claimed-identity 1:1 verification</h3><p><code>POST /api/v1/verify</code> compares the largest face directly with that person’s stored templates and does not depend on FAISS.</p></div><span class="flow-badge">DIRECT DATABASE READ</span></div>
+          <div class="steps">
+            <div class="step"><span class="step-num">01</span><h4>Resolve person</h4><p>Load claimed identity and templates.</p></div>
+            <div class="step"><span class="step-num">02</span><h4>Pick the face</h4><p>No face produces a domain error.</p></div>
+            <div class="step"><span class="step-num">03</span><h4>Assess</h4><p>Quality and liveness apply the same policy gates.</p></div>
+            <div class="step"><span class="step-num">04</span><h4>Embed</h4><p>Produce a normalized query vector.</p></div>
+            <div class="step"><span class="step-num">05</span><h4>Compare</h4><p>Max cosine similarity across claimed templates.</p></div>
+            <div class="step"><span class="step-num">06</span><h4>Decide</h4><p>Threshold match (never for a disabled person); log access on success.</p></div>
+          </div>
+          <div class="branch-note">Verification is 1:1: it writes no unknown-face event, captures no snapshot and raises no alert. Recognition and verification share the live threshold service.</div>
+        </div>
+
+        <div class="flow-panel" id="flow-edge" role="tabpanel" aria-labelledby="tab-edge" hidden>
+          <div class="flow-summary"><div><h3>Split edge / server inference</h3><p>The device detects, evaluates, and embeds locally. <code>POST /api/v1/match</code> transports no image — only the model name, normalized embeddings, quality verdicts, and liveness results. It is the one route that needs no operator session.</p></div><span class="flow-badge">TRUST BOUNDARY</span></div>
+          <div class="steps">
+            <div class="step"><span class="step-num">01</span><h4>Detect on edge</h4><p>Pose can be deferred until quality evaluation.</p></div>
+            <div class="step"><span class="step-num">02</span><h4>Assess locally</h4><p>Quality and optional liveness run on device.</p></div>
+            <div class="step"><span class="step-num">03</span><h4>Encode vectors</h4><p>Base64 little-endian float32; no images sent.</p></div>
+            <div class="step"><span class="step-num">04</span><h4>Validate server policy</h4><p>Model must match; server re-judges liveness threshold.</p></div>
+            <div class="step"><span class="step-num">05</span><h4>Identify</h4><p>Same matcher and threshold as image recognition.</p></div>
+            <div class="step"><span class="step-num">06</span><h4>Record event</h4><p>Matched → access; unmatched → unknown without bbox.</p></div>
+          </div>
+          <div class="branch-note">The server owns policy. An edge-supplied liveness score is evidence, not the final verdict; when server liveness is on, every face must provide it. Embeddings are accepted in requests only, never returned.</div>
+        </div>
+
+        <div class="flow-panel" id="flow-login" role="tabpanel" aria-labelledby="tab-login" hidden>
+          <div class="flow-summary"><div><h3>Operator face login</h3><p><code>POST /api/v1/auth/face-login</code> turns one live face into a session token. With <code>require_session</code> (prod), every other route except <code>/match</code> needs <code>Authorization: Bearer</code> as well as the API key.</p></div><span class="flow-badge">SESSION ISSUE</span></div>
+          <div class="steps">
+            <div class="step"><span class="step-num">01</span><h4>Rate-limit</h4><p>Failed attempts per client IP; audited with a reason only.</p></div>
+            <div class="step"><span class="step-num">02</span><h4>One face</h4><p>Exactly one face that passes quality.</p></div>
+            <div class="step"><span class="step-num">03</span><h4>Always liveness</h4><p>Checked even while the global switch is off.</p></div>
+            <div class="step"><span class="step-num">04</span><h4>Match</h4><p>Match threshold, or <code>min_similarity</code> if stricter.</p></div>
+            <div class="step"><span class="step-num">05</span><h4>Admin gate</h4><p>Active person in <code>auth.admin_group</code>.</p></div>
+            <div class="step"><span class="step-num">06</span><h4>Sign token</h4><p>HMAC-SHA256 <code>v1.payload.sig</code>; refresh rotates it.</p></div>
+          </div>
+          <div class="branch-note">Every request re-reads the person (cached), so disabling someone or moving them out of the admin group ends their sessions. Logout revokes one token; logout-all revokes every token issued before now. Email/password login and reset links issue the same session under the same rule.</div>
+        </div>
+
+        <div class="flow-panel" id="flow-visit" role="tabpanel" aria-labelledby="tab-visit" hidden>
+          <div class="flow-summary"><div><h3>Visitor kiosk check-in</h3><p><code>POST /api/v1/visits/kiosk?mode=in|out|auto</code> recognises a frame and moves the matched visitor’s visit along. Visitors are ordinary people in group <code>Visitors</code> plus a <code>visits</code> row naming their host.</p></div><span class="flow-badge">RECOGNIZE + VISIT WRITE</span></div>
+          <div class="steps">
+            <div class="step"><span class="step-num">01</span><h4>Recognize</h4><p>Same pipeline, <code>source=kiosk</code>; unknowns use the live hold.</p></div>
+            <div class="step"><span class="step-num">02</span><h4>Pick visitor</h4><p>Largest matched face with a visit whose window contains now.</p></div>
+            <div class="step"><span class="step-num">03</span><h4>Transition</h4><p>expected → checked_in ↔ checked_out; auto has a 60 s cooldown.</p></div>
+            <div class="step"><span class="step-num">04</span><h4>Notify host</h4><p>First arrival raises <code>visitor_arrived</code>, emailed via Mailjet.</p></div>
+            <div class="step"><span class="step-num">05</span><h4>Sweep</h4><p>Every 60 s: close visits past <code>valid_until</code> + grace.</p></div>
+            <div class="step"><span class="step-num">06</span><h4>Purge</h4><p>Delete the visitor’s face data; keep the visit row.</p></div>
+          </div>
+          <div class="branch-note">A visitor moved out of <code>Visitors</code> is detached, never deleted. Cancelling purges at once. Audit rows hold ids, methods and statuses — never phone numbers or emails.</div>
+        </div>
+
+        <div class="flow-panel" id="flow-search" role="tabpanel" aria-labelledby="tab-search" hidden>
+          <div class="flow-summary"><div><h3>Targeted search &amp; photo sorting</h3><p><code>POST /api/v1/reference-sets</code> keeps the largest face of each reference photo; <code>/reference-sets/{id}/recognize</code> then returns only faces in a frame that match those references. Photo sorts group the faces of many photos by person.</p></div><span class="flow-badge">MEMORY ONLY · NO WRITE</span></div>
+          <div class="steps">
+            <div class="step"><span class="step-num">01</span><h4>Upload references</h4><p>Largest face per photo; reports any enrolled match.</p></div>
+            <div class="step"><span class="step-num">02</span><h4>Hold in memory</h4><p>30 min sliding TTL, at most 50 sets.</p></div>
+            <div class="step"><span class="step-num">03</span><h4>Recognize frames</h4><p>Gallery identity plus best reference similarity.</p></div>
+            <div class="step"><span class="step-num">04</span><h4>Accept</h4><p>Same threshold, quality and liveness rules as identify.</p></div>
+            <div class="step"><span class="step-num">05</span><h4>Return only</h4><p>No access, unknown, snapshot or alert rows.</p></div>
+            <div class="step"><span class="step-num">06</span><h4>Expire</h4><p>DELETE, TTL or restart drops the set; clients re-upload.</p></div>
+          </div>
+          <div class="branch-note">Photo sorts (<code>/photo-sorts</code>) cluster unmatched faces with average linkage at the match threshold. Both stores assume a single uvicorn worker; several workers would need shared storage.</div>
+        </div>
+
+        <div class="flow-panel" id="flow-analysis" role="tabpanel" aria-labelledby="tab-analysis" hidden>
+          <div class="flow-summary"><div><h3>Attributes without identity</h3><p><code>POST /api/v1/analyze</code> detects and describes faces, but deliberately skips embedding search and all event writes.</p></div><span class="flow-badge">NO SEARCH · NO WRITE</span></div>
+          <div class="steps">
+            <div class="step"><span class="step-num">01</span><h4>Decode image</h4><p>Apply normal upload safety limits.</p></div>
+            <div class="step"><span class="step-num">02</span><h4>Detect</h4><p>Find every face, largest first.</p></div>
+            <div class="step"><span class="step-num">03</span><h4>Quality</h4><p>Return pass state, reasons and measurements.</p></div>
+            <div class="step"><span class="step-num">04</span><h4>Geometry</h4><p>Return pose and five landmarks when enabled.</p></div>
+            <div class="step"><span class="step-num">05</span><h4>Optional models</h4><p>Demographics, expression and liveness per request.</p></div>
+            <div class="step"><span class="step-num">06</span><h4>Return only</h4><p>No embedding, identity, gallery search or database write.</p></div>
+          </div>
+          <div class="branch-note">Demographic and expression estimates are never logged or used for matching. They are persisted only by the opt-in face-profile and per-event estimate stores.</div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="rules-title">
+      <div class="section-head">
+        <div class="section-index">07 / Invariants</div>
+        <div class="section-title"><h2 id="rules-title">Rules the design protects</h2><p>These are system invariants, not incidental implementation details.</p></div>
+      </div>
+      <div class="invariants">
+        <article class="rule"><span class="rule-code">VECTOR/01</span><h3>Validated embeddings only</h3><p>Every stored, indexed, or transported vector is normalized float32 with shape (512,).</p></article>
+        <article class="rule"><span class="rule-code">DECISION/02</span><h3>Uncalibrated means unknown</h3><p>A null match threshold never accepts an identity. No production threshold is hard-coded.</p></article>
+        <article class="rule"><span class="rule-code">IDENTITY/03</span><h3>Stable ID mapping</h3><p>AUTOINCREMENT / identity embedding IDs are never reused and are also the FAISS vector IDs.</p></article>
+        <article class="rule"><span class="rule-code">PRIVACY/04</span><h3>Minimize retained data</h3><p>Responses never expose embeddings; logs never hold images, embeddings, demographics, or expression.</p></article>
+        <article class="rule"><span class="rule-code">MATCH/05</span><h3>Similarity, not confidence</h3><p>Scores are cosine similarities shown as <code>Similarity: 0.xxx</code>, never percentages.</p></article>
+        <article class="rule"><span class="rule-code">DUPLICATE/06</span><h3>Report, never merge</h3><p>Possible duplicates return POSSIBLE_DUPLICATE and open a review; resolving changes no person.</p></article>
+        <article class="rule"><span class="rule-code">INDEX/07</span><h3>Derived and repairable</h3><p>Startup compares database IDs with FAISS IDs and rebuilds the projection on any mismatch.</p></article>
+        <article class="rule"><span class="rule-code">FAILURE/08</span><h3>Recognition keeps serving</h3><p>Event, snapshot and alert writes run after the response and never raise.</p></article>
+        <article class="rule"><span class="rule-code">OPT-IN/09</span><h3>Biometric extras are switches</h3><p>Thumbnails, snapshots, face profiles and per-event estimates are all off by default.</p></article>
+        <article class="rule"><span class="rule-code">MEMORY/10</span><h3>Search sessions stay ephemeral</h3><p>Reference sets and photo sorts live in process memory only and expire.</p></article>
+        <article class="rule"><span class="rule-code">AUTH/11</span><h3>Sessions follow the person</h3><p>Disabling an operator or changing their group ends their sessions on the next request.</p></article>
+        <article class="rule"><span class="rule-code">SECRET/12</span><h3>Secrets stay server-side</h3><p>Mailjet keys, the Supabase secret key and the session secret are never returned or logged.</p></article>
+      </div>
+    </section>
+
+    <section id="data" aria-labelledby="data-title">
+      <div class="section-head">
+        <div class="section-index">08 / Persistence</div>
+        <div class="section-title"><h2 id="data-title">Data ownership</h2><p>One set of portable SQL runs on SQLite or Postgres (schema v13). The database holds durable truth; FAISS accelerates candidate retrieval; the image store optionally holds explicit image artifacts.</p></div>
+      </div>
+      <div class="data-grid">
+        <div class="table-card">
+          <div class="card-head"><h3>Schema responsibilities</h3><code>faces.db · recognition.*</code></div>
+          <div class="scrollbox">
+            <table>
+              <thead><tr><th>Table</th><th>Purpose</th><th>Lifecycle</th></tr></thead>
+              <tbody>
+                <tr><td><code>persons</code></td><td>Identity, name, attributes, email, status, group, watchlist</td><td>Parent record; deletes cascade</td></tr>
+                <tr><td><code>embeddings</code></td><td>Validated template vectors, model, quality, source label</td><td>Canonical template store</td></tr>
+                <tr><td><code>settings</code></td><td>Threshold, liveness, capture switches, alerts, attendance, visitors</td><td>CLI override &gt; saved setting &gt; YAML</td></tr>
+                <tr><td><code>audit_events</code></td><td>Administrative mutations, logins and setting changes</td><td>Ids, counts and statuses only</td></tr>
+                <tr><td><code>access_events</code></td><td>Matched person, similarity, liveness, source, actor, watchlist</td><td>Deduplicated; retention-pruned</td></tr>
+                <tr><td><code>unknown_face_events</code></td><td>Reason, similarity, threshold, bbox, quality/liveness signals</td><td>Live faces once per track; no candidates</td></tr>
+                <tr><td><code>face_profiles</code></td><td>Opt-in per-template estimates and capture measurements</td><td>Cascade with template and person</td></tr>
+                <tr><td><code>duplicate_reviews</code></td><td>Attempted id, existing person, similarity, resolution</td><td>Open until resolved</td></tr>
+                <tr><td><code>alerts</code></td><td>Disabled person, watchlist match, visitor arrival; email status</td><td>Throttled per kind and person</td></tr>
+                <tr><td><code>operator_credentials</code>, <code>password_resets</code></td><td>Lower-case email, scrypt hash; SHA-256 of reset tokens</td><td>Single-use links; cascade with person</td></tr>
+                <tr><td><code>revoked_sessions</code>, <code>session_revocations</code></td><td>Logged-out token ids; per-person “revoked before” time</td><td>Pruned after token expiry</td></tr>
+                <tr><td><code>visits</code></td><td>Visitor, host, window, status, check-in/out times and method</td><td>Outlives the purged visitor</td></tr>
+                <tr><td><code>replica_changes</code></td><td>Ordered Postgres change feed for people and embedding metadata</td><td>Consumed by per-instance replica pollers</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <aside class="aside-card">
+          <h3>Identity chain</h3>
+          <div class="mapping">
+            <code>ArcFace vector</code><span class="arrow">→</span><span class="target">embeddings row</span>
+            <code>embedding_id</code><span class="arrow">=</span><span class="target">FAISS vector ID</span>
+            <code>embedding_id</code><span class="arrow">→</span><span class="target">person_id</span>
+            <code>person_id</code><span class="arrow">→</span><span class="target">name, group, status</span>
+            <code>image key</code><span class="arrow">→</span><span class="target">thumbnails/&lt;person&gt;/&lt;eid&gt;.jpg</span>
+          </div>
+          <ul class="privacy-list">
+            <li>No embeddings in API responses or logs</li>
+            <li>No images in audit, access or unknown rows</li>
+            <li>No candidate identities in unknown logs</li>
+            <li>No demographics or expression outside the opt-in stores</li>
+            <li>No phone numbers, emails or passwords in the audit log</li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+
+    <section id="api" aria-labelledby="api-title">
+      <div class="section-head">
+        <div class="section-index">09 / Interface</div>
+        <div class="section-title"><h2 id="api-title">API surface</h2><p>All application routes sit beneath <code>/api/v1</code>. <code>X-API-Key</code> protects everything except health and readiness; with <code>require_session</code>, a Bearer token is also required on every route except <code>/match</code>; the <code>/auth</code> routes check sessions themselves.</p></div>
+      </div>
+      <div class="endpoint-grid">
+        <article class="endpoint-group"><h3>Recognition &amp; analysis</h3>
+          <div class="endpoint"><span class="method post">POST</span><code>/recognize[/batch]</code></div>
+          <div class="endpoint"><span class="method post">POST</span><code>/verify</code></div>
+          <div class="endpoint"><span class="method post">POST</span><code>/match</code></div>
+          <div class="endpoint"><span class="method post">POST</span><code>/analyze</code></div>
+          <div class="endpoint"><span class="method post">POST</span><code>/reference-sets[/{id}/recognize]</code></div>
+          <div class="endpoint"><span class="method post">POST</span><code>/photo-sorts[/{id}/photos]</code></div>
+        </article>
+        <article class="endpoint-group"><h3>Gallery</h3>
+          <div class="endpoint"><span class="method post">POST</span><code>/persons</code></div>
+          <div class="endpoint"><span class="method">GET</span><code>/persons[/covers | /{person_id}]</code></div>
+          <div class="endpoint"><span class="method post">POST</span><code>/persons/{id}/faces[/from-recognition]</code></div>
+          <div class="endpoint"><span class="method">PATCH</span><code>/persons/{person_id}</code></div>
+          <div class="endpoint"><span class="method delete">DELETE</span><code>/persons/{id}[/faces/{eid}]</code></div>
+          <div class="endpoint"><span class="method">GET</span><code>/groups · /watchlists · /duplicate-reviews</code></div>
+        </article>
+        <article class="endpoint-group"><h3>Visitors</h3>
+          <div class="endpoint"><span class="method post">POST</span><code>/visits · /visits/kiosk</code></div>
+          <div class="endpoint"><span class="method">GET</span><code>/visits[/hosts | /{id}]</code></div>
+          <div class="endpoint"><span class="method">PATCH</span><code>/visits/{id}</code></div>
+          <div class="endpoint"><span class="method post">POST</span><code>/visits/{id}/check-in | check-out | cancel</code></div>
+          <div class="endpoint"><span class="method put">PUT</span><code>/settings/visitors</code></div>
+        </article>
+        <article class="endpoint-group"><h3>Policy &amp; settings</h3>
+          <div class="endpoint"><span class="method put">PUT</span><code>/settings[/threshold | /liveness]</code></div>
+          <div class="endpoint"><span class="method put">PUT</span><code>/settings/alerts · /settings/attendance</code></div>
+          <div class="endpoint"><span class="method post">POST</span><code>/settings/alerts/test</code></div>
+          <div class="endpoint"><span class="method post">POST</span><code>/calibration/gallery</code></div>
+        </article>
+        <article class="endpoint-group"><h3>Operational records</h3>
+          <div class="endpoint"><span class="method">GET</span><code>/overview</code></div>
+          <div class="endpoint"><span class="method">GET</span><code>/access-events · /unknown-faces</code></div>
+          <div class="endpoint"><span class="method">GET</span><code>/alerts · /audit</code></div>
+          <div class="endpoint"><span class="method">GET</span><code>/analytics/recognition | attendance | enrollments</code></div>
+          <div class="endpoint"><span class="method">GET</span><code>/analytics/threshold-impact | demographics</code></div>
+        </article>
+        <article class="endpoint-group"><h3>Auth &amp; status</h3>
+          <div class="endpoint"><span class="method post">POST</span><code>/auth/face-login | password-login</code></div>
+          <div class="endpoint"><span class="method post">POST</span><code>/auth/refresh | logout | logout-all</code></div>
+          <div class="endpoint"><span class="method put">PUT</span><code>/auth/credentials</code></div>
+          <div class="endpoint"><span class="method">GET</span><code>/auth/session · /health · /ready</code></div>
+          <div class="endpoint"><span class="method">GET</span><code>/metrics[/prometheus]</code></div>
+        </article>
+      </div>
+    </section>
+
+    <footer class="footer"><span>Generated from the repository’s services, clients, workflows, configuration, and UI contracts.</span><code>FastAPI · Next.js · Expo · GitHub Actions · Ansible · GCP</code></footer>
+  </main>
+
+  <script>
+    const root = document.documentElement;
+    const themeButton = document.querySelector('#theme-toggle');
+    const savedTheme = localStorage.getItem('architecture-theme');
+    const preferredDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = savedTheme || (preferredDark ? 'dark' : 'light');
+
+    function updateThemeLabel() {
+      const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      themeButton.setAttribute('aria-label', `Switch to ${next} theme`);
+    }
+    updateThemeLabel();
+    themeButton.addEventListener('click', () => {
+      root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('architecture-theme', root.dataset.theme);
+      updateThemeLabel();
+    });
+
+    const tabs = [...document.querySelectorAll('.flow-tab')];
+    const panels = [...document.querySelectorAll('.flow-panel')];
+    function selectFlow(tab, moveFocus = false) {
+      tabs.forEach(item => {
+        const selected = item === tab;
+        item.setAttribute('aria-selected', String(selected));
+        item.tabIndex = selected ? 0 : -1;
+      });
+      panels.forEach(panel => {
+        const selected = panel.id === `flow-${tab.dataset.flow}`;
+        panel.classList.toggle('active', selected);
+        panel.hidden = !selected;
+      });
+      if (moveFocus) tab.focus();
+    }
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => selectFlow(tab));
+      tab.addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        let next = index;
+        if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+        if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+        if (event.key === 'Home') next = 0;
+        if (event.key === 'End') next = tabs.length - 1;
+        selectFlow(tabs[next], true);
+      });
+    });
+  </script>
+</body>
+</html>
