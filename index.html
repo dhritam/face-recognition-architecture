@@ -364,7 +364,7 @@
       <div><strong>System Atlas</strong><br><span>face_recognition_server</span></div>
     </div>
     <nav class="top-nav" aria-label="Page sections">
-      <a href="#architecture">Architecture</a><a href="#boundaries">Frontend / backend</a><a href="#delivery">CI / CD</a><a href="#application-flow">App flow</a><a href="#cache-db">Cache DB</a><a href="#data">Data</a><a href="#api">API</a>
+      <a href="#architecture">Architecture</a><a href="#boundaries">Frontend / backend</a><a href="#delivery">CI / CD</a><a href="#application-flow">App flow</a><a href="#cache-db">Cache DB</a><a href="#data">Data</a><a href="#api">API</a><a href="FACE_RECOGNITION_ARCHITECTURE.html">Interactive diagram ↗</a>
     </nav>
     <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch to dark theme" title="Toggle theme">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 15.3A8.5 8.5 0 118.7 4a7 7 0 0011.3 11.3z"/></svg>
@@ -378,6 +378,7 @@
         <h1 id="page-title">One image in.<br>One decision out.</h1>
         <p class="hero-copy">An open-set face recognition server. InsightFace produces normalized 512-dimensional vectors, FAISS retrieves candidates, and the database (SQLite locally, Postgres on Supabase in production) remains the canonical record of people, templates, settings, visits and operational events. Around that core sit operator login, attendance, visitor management, alerts and short-lived search sessions.</p>
         <div class="hero-note"><span class="status-dot" aria-hidden="true"></span><span>Decision output is a cosine similarity — <b>never a probability</b>.</span></div>
+        <p class="hero-copy"><a href="FACE_RECOGNITION_ARCHITECTURE.html">Open the interactive architecture diagram →</a></p>
       </div>
       <div class="signal-board" aria-label="Recognition signal overview">
         <div class="board-label"><span>Signal trace / recognition</span><span>OPEN SET · 1:N</span></div>
